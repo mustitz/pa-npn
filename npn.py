@@ -68,7 +68,7 @@ def build_npn_transforms(qargs):
     return transforms
 
 
-def get_npn_class(qargs, qvalues, func, transforms):
+def get_npn_class(qvalues, func, transforms):
     """
     Form NPN class with a given function.
     """
@@ -81,7 +81,7 @@ def get_npn_class(qargs, qvalues, func, transforms):
                 arg_ith = 1 if arg & (1 << i) else 0
                 if arg_ith ^ inverses[i]:
                     coarg |= 1 << j
-            if func[arg]:
+            if func & (1 << arg):
                 cofunc1 |= 1 << coarg
             else:
                 cofunc2 |= 1 << coarg
@@ -103,7 +103,7 @@ def robust_build_npn_classes(qargs):
     npn_classes = dict()
     for ifunc in range(qfunctions):
         func = BitArray(ifunc, qvalues)
-        npn_class = get_npn_class(qargs, qvalues, func, transforms)
+        npn_class = get_npn_class(qvalues, func, transforms)
         min_ifunc = min(npn_class)
         assert min_ifunc <= ifunc
         if min_ifunc == ifunc:
@@ -133,20 +133,20 @@ def build_npn_classes(qargs, qones_range=None):
 
     num = 0
     for qones in qones_list:
-        ifunc = 2 ** qones - 1
-        ifunc_last = 2 ** (qvalues-1)
+        func = 2 ** qones - 1
+        func_last = 2 ** (qvalues-1)
         processed = set()
-        while ifunc < ifunc_last:
-            if ifunc not in processed:
-                func = BitArray(ifunc, qvalues)
-                npn_class = get_npn_class(qargs, qvalues, func, transforms)
+        while func < func_last:
+            if func not in processed:
+                npn_class = get_npn_class(qvalues, func, transforms)
                 npn_class_len = len(npn_class)
                 processed.update(npn_class)
                 num += 1
-                print(f"{num:6d} {func} {npn_class_len:4d}", flush=True)
-                if ifunc == 0:
+                func_str = f"{func:b}".zfill(qvalues)
+                print(f"{num:6d} {func_str} {npn_class_len:4d}", flush=True)
+                if func == 0:
                     break
-            ifunc = ncm(ifunc)
+            func = ncm(func)
 
 
 def main():
