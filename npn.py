@@ -44,6 +44,18 @@ class BitArray:
         return self.line
 
 
+def ncm(x): # pylint: disable=invalid-name
+    """
+    Generate the next combination mask (NCM) for an integer.
+    This is Gosper's hack to get the next integer with the same ones count.
+    """
+    a = x & -x
+    b = x + a
+    c = b ^ x
+    c >>= 1 + a.bit_length()
+    return b | c
+
+
 def build_npn_transforms(qargs):
     """
     Generate all argument symmetries for a given count.
@@ -79,9 +91,9 @@ def get_npn_class(qargs, qvalues, func, transforms):
     return set(func.value for func in npn_class)
 
 
-def build_npn_classes(qargs):
+def robust_build_npn_classes(qargs):
     """
-    Build all NPN classes for a given argument count.
+    Build all NPN classes in a robust way for a given argument count.
     """
     transforms = build_npn_transforms(qargs)
     qvalues = 2 ** qargs
@@ -102,6 +114,38 @@ def build_npn_classes(qargs):
 
     total = sum(len(npn_class) for npn_class in npn_classes.values())
     assert total == qfunctions
+
+
+def build_npn_classes(qargs, qones_range=None):
+    """
+    Build all NPN classes in an optimal way for a given argument count.
+    """
+    transforms = build_npn_transforms(qargs)
+    qvalues = 2 ** qargs
+
+    if isinstance(qones_range, int):
+        qones_list = [int(qones_range)]
+    elif qones_range is None:
+        qones_list = list(range(qvalues//2 + 1))
+    else:
+        qones_list = list(qones_range)
+
+    num = 0
+    for qones in qones_list:
+        ifunc = 2 ** qones - 1
+        ifunc_last = 2 ** (qvalues-1)
+        processed = set()
+        while ifunc < ifunc_last:
+            if ifunc not in processed:
+                func = BitArray(ifunc, qvalues)
+                npn_class = get_npn_class(qargs, qvalues, func, transforms)
+                npn_class_len = len(npn_class)
+                processed.update(npn_class)
+                num += 1
+                print(f"{num:6d} {func} {npn_class_len:4d}", flush=True)
+                if ifunc == 0:
+                    break
+            ifunc = ncm(ifunc)
 
 
 def main():

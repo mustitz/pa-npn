@@ -1,2 +1,5 @@
 [MASTER]
 disable=C0114
+
+[FORMAT]
+good-names=x,a,b,c,i,j
