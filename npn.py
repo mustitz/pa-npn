@@ -77,14 +77,14 @@ def get_npn_class(qargs, qvalues, func, transforms):
         cofunc1, cofunc2 = 0, 0
         for iarg in range(qvalues):
             arg = BitArray(iarg, qargs)
-            coarg = [None] * qargs
+            coarg = 0
             for i, j in enumerate(perm):
-                coarg[j] = arg[i] ^ inverses[i]
-            coarg = BitArray(coarg)
+                if arg[i] ^ inverses[i]:
+                    coarg |= 1 << j
             if func[arg.value]:
-                cofunc1 |= 1 << coarg.value
+                cofunc1 |= 1 << coarg
             else:
-                cofunc2 |= 1 << coarg.value
+                cofunc2 |= 1 << coarg
 
         npn_class.append(cofunc1)
         npn_class.append(cofunc2)
