@@ -74,21 +74,22 @@ def get_npn_class(qargs, qvalues, func, transforms):
     """
     npn_class = []
     for perm, inverses in transforms:
-        cofunc1 = [None] * qvalues
-        cofunc2 = [None] * qvalues
+        cofunc1, cofunc2 = 0, 0
         for iarg in range(qvalues):
             arg = BitArray(iarg, qargs)
             coarg = [None] * qargs
             for i, j in enumerate(perm):
                 coarg[j] = arg[i] ^ inverses[i]
             coarg = BitArray(coarg)
-            cofunc1[coarg.value] = func[arg.value]
-            cofunc2[coarg.value] = 1 ^ func[arg.value]
+            if func[arg.value]:
+                cofunc1 |= 1 << coarg.value
+            else:
+                cofunc2 |= 1 << coarg.value
 
-        npn_class.append(BitArray(cofunc1))
-        npn_class.append(BitArray(cofunc2))
+        npn_class.append(cofunc1)
+        npn_class.append(cofunc2)
 
-    return set(func.value for func in npn_class)
+    return set(npn_class)
 
 
 def robust_build_npn_classes(qargs):
