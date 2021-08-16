@@ -1,47 +1,5 @@
-from typing import List
 from itertools import permutations, product
 import sys
-
-
-class BitArray:
-    """
-    A class to represent a fixed length array of bits.
-    """
-
-    value: int = 0
-    line: str = ''
-    table: List[int] = []
-
-    def _set(self, value, line, table):
-        self.value = value
-        self.line = line
-        self.table = table
-
-    def _init_from_int(self, value, size):
-        line = f"{value:b}".zfill(size)
-        assert len(line) == size
-
-        table = [ int(ch) for ch in line ]
-        table.reverse()
-
-        self._set(value, line, table)
-
-    def _init_from_list(self, table):
-        line = ''.join(map(str, reversed(table)))
-        value = eval('0b' + line) # pylint: disable=eval-used
-        self._set(value, line, table)
-
-    def __init__(self, *args):
-        if len(args) == 1:
-            self._init_from_list(*args)
-        else:
-            self._init_from_int(*args)
-
-    def __getitem__(self, index):
-        return self.table[index]
-
-    def __str__(self):
-        return self.line
 
 
 def ncm(x): # pylint: disable=invalid-name
@@ -90,31 +48,6 @@ def get_npn_class(qvalues, func, transforms):
         npn_class.append(cofunc2)
 
     return set(npn_class)
-
-
-def robust_build_npn_classes(qargs):
-    """
-    Build all NPN classes in a robust way for a given argument count.
-    """
-    transforms = build_npn_transforms(qargs)
-    qvalues = 2 ** qargs
-    qfunctions = 2 ** qvalues
-
-    npn_classes = dict()
-    for ifunc in range(qfunctions):
-        func = BitArray(ifunc, qvalues)
-        npn_class = get_npn_class(qvalues, func, transforms)
-        min_ifunc = min(npn_class)
-        assert min_ifunc <= ifunc
-        if min_ifunc == ifunc:
-            npn_classes[ifunc] = npn_class
-            npn_class_len, num = len(npn_class), len(npn_classes)
-            print(f"{num:3d} {func} {npn_class_len:3d}", flush=True)
-        else:
-            assert npn_classes[min_ifunc] == npn_class
-
-    total = sum(len(npn_class) for npn_class in npn_classes.values())
-    assert total == qfunctions
 
 
 def build_npn_classes(qargs, qones_range=None):
