@@ -1,5 +1,6 @@
 from itertools import permutations, product
 import sys
+import numpy as np
 
 
 def ncm(x): # pylint: disable=invalid-name
@@ -14,6 +15,29 @@ def ncm(x): # pylint: disable=invalid-name
     return b | c
 
 
+class BitsInNumpy: # pylint: disable=too-few-public-methods
+    """
+    A numpy array for an int set implementation based on bitmasks.
+    """
+    def __init__(self, sz, dtype=np.uint64):
+        self.dtype = dtype
+        self.elem_bits = 8 * np.dtype(dtype).itemsize
+        data_len = sz // self.elem_bits + (sz % self.elem_bits != 0)
+        self.data = np.zeros(data_len, dtype=self.dtype)
+
+    def append(self, value):
+        """
+        Append a number to the bit set. Returns true if the number is already in the set.
+        """
+        index = value // self.elem_bits
+        offset = value % self.elem_bits
+        mask = self.dtype(1 << offset)
+        result = (self.data[index] & mask) == 0
+        if result:
+            self.data[index] |= mask
+        return result
+
+
 def build_npn_transforms(qargs):
     """
     Generate all argument symmetries for a given count.
@@ -26,11 +50,11 @@ def build_npn_transforms(qargs):
     return transforms
 
 
-def get_npn_class(qvalues, func, transforms):
+def get_npn_class(qvalues, func, transforms, bits):
     """
     Form NPN class with a given function.
     """
-    npn_class = []
+    npn_class_len = 0
     for perm, inverses in transforms:
         cofunc1, cofunc2 = 0, 0
         for arg in range(qvalues):
@@ -44,10 +68,10 @@ def get_npn_class(qvalues, func, transforms):
             else:
                 cofunc2 |= 1 << coarg
 
-        npn_class.append(cofunc1)
-        npn_class.append(cofunc2)
+        npn_class_len += bits.append(cofunc1)
+        npn_class_len += bits.append(cofunc2)
 
-    return set(npn_class)
+    return npn_class_len
 
 
 def build_npn_classes(qargs, qones_range=None):
@@ -56,6 +80,7 @@ def build_npn_classes(qargs, qones_range=None):
     """
     transforms = build_npn_transforms(qargs)
     qvalues = 2 ** qargs
+    qfunctions = 2 ** qvalues
 
     if isinstance(qones_range, int):
         qones_list = [int(qones_range)]
@@ -65,15 +90,13 @@ def build_npn_classes(qargs, qones_range=None):
         qones_list = list(qones_range)
 
     num = 0
+    bits = BitsInNumpy(qfunctions)
     for qones in qones_list:
         func = 2 ** qones - 1
         func_last = 2 ** (qvalues-1)
-        processed = set()
         while func < func_last:
-            if func not in processed:
-                npn_class = get_npn_class(qvalues, func, transforms)
-                npn_class_len = len(npn_class)
-                processed.update(npn_class)
+            if bits.append(func):
+                npn_class_len = 1 + get_npn_class(qvalues, func, transforms, bits)
                 num += 1
                 func_str = f"{func:b}".zfill(qvalues)
                 print(f"{num:6d} {func_str} {npn_class_len:4d}", flush=True)
