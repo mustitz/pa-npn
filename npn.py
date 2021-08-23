@@ -1,5 +1,5 @@
 from itertools import permutations, product
-import sys
+from argparse import ArgumentParser
 import numpy as np
 
 
@@ -109,7 +109,21 @@ def main():
     """
     An entry point.
     """
-    for qargs in sys.argv[1:]:
+
+    cmdline_arguments = {
+        'args': {
+            'nargs': '+',
+            'metavar': 'arg',
+            'help': 'Argument counts for boolean functions.',
+        },
+    }
+
+    parser = ArgumentParser(description='Generate NPN classes of boolean functions.')
+    for name, kwargs in cmdline_arguments.items():
+        parser.add_argument(name, **kwargs)
+    args = parser.parse_args()
+
+    for qargs in args.args:
         build_npn_classes(int(qargs))
 
 
