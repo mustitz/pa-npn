@@ -1,5 +1,6 @@
 from itertools import permutations, product
 from argparse import ArgumentParser
+import sys
 import numpy as np
 
 
@@ -105,6 +106,36 @@ def build_npn_classes(qargs, qones_range=None, **kwargs):
             func = ncm(func)
 
 
+def make_todo(arg): # pylint: disable=too-many-return-statements
+    """
+    Parse command line argument and returns it in a parsed form.
+    The string is returned if error.
+    """
+    if arg.isdigit():
+        return int(arg), None
+    if ':' not in arg:
+        return f"Invalid argument count number “{arg}”."
+    qargs, bits = arg.split(':', maxsplit=1)
+    if not qargs.isdigit():
+        return f"Invalid argument count number “{qargs}”."
+
+    qones_range = []
+    for item in bits.split(','):
+        if item.isdigit():
+            qones_range.append(int(item))
+            continue
+        if '-' not in item:
+            return f"Invalid range “{item}”."
+        start, end = item.split('-', maxsplit=1)
+        if not start.isdigit():
+            return f"Invalid start range “{start}”."
+        if not end.isdigit():
+            return f"Invalid end range “{end}”."
+        qones_range += list(range(int(start), int(end)+1))
+
+    return int(qargs), sorted(set(qones_range))
+
+
 def main():
     """
     An entry point.
@@ -114,7 +145,8 @@ def main():
         'args': {
             'nargs': '+',
             'metavar': 'arg',
-            'help': 'Argument counts for boolean functions.',
+            'help': 'Argument counts for boolean functions with optional one bits. ' +
+                    'Examples: 5 or 5:3 or 5:3-6 or 5:3,6 or 5:3,6-8.'
         },
         ('--output', '-o'): {
             'nargs': 1,
@@ -129,14 +161,23 @@ def main():
         parser.add_argument(*args, **kwargs)
     args = parser.parse_args()
 
+    todo = [ make_todo(arg) for arg in args.args ]
+    errors = [ msg for msg in todo if isinstance(msg, str) ]
+    if errors:
+        print('Some error(s) in argument counts has been found:', file=sys.stderr)
+        for msg in errors:
+            print(' ', msg, file=sys.stderr)
+        parser.print_usage()
+        sys.exit(1)
+
     kwargs = dict()
     try:
         if args.output:
             fn = args.output[0]
             kwargs['file'] = open(fn, 'w') # pylint: disable=consider-using-with
 
-        for qargs in args.args:
-            build_npn_classes(int(qargs), **kwargs)
+        for qargs, qones_range in todo:
+            build_npn_classes(qargs, qones_range, **kwargs)
 
     finally:
         outf = kwargs.get('file')
