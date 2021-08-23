@@ -74,7 +74,7 @@ def get_npn_class(qvalues, func, transforms, bits):
     return npn_class_len
 
 
-def build_npn_classes(qargs, qones_range=None):
+def build_npn_classes(qargs, qones_range=None, **kwargs):
     """
     Build all NPN classes in an optimal way for a given argument count.
     """
@@ -99,7 +99,7 @@ def build_npn_classes(qargs, qones_range=None):
                 npn_class_len = 1 + get_npn_class(qvalues, func, transforms, bits)
                 num += 1
                 func_str = f"{func:b}".zfill(qvalues)
-                print(f"{num:6d} {func_str} {npn_class_len:4d}", flush=True)
+                print(f"{num:6d} {func_str} {npn_class_len:4d}", flush=True, **kwargs)
                 if func == 0:
                     break
             func = ncm(func)
@@ -116,15 +116,32 @@ def main():
             'metavar': 'arg',
             'help': 'Argument counts for boolean functions.',
         },
+        ('--output', '-o'): {
+            'nargs': 1,
+            'help': 'Set output file',
+        },
     }
 
     parser = ArgumentParser(description='Generate NPN classes of boolean functions.')
-    for name, kwargs in cmdline_arguments.items():
-        parser.add_argument(name, **kwargs)
+    for args, kwargs in cmdline_arguments.items():
+        if isinstance(args, str):
+            args = (args,)
+        parser.add_argument(*args, **kwargs)
     args = parser.parse_args()
 
-    for qargs in args.args:
-        build_npn_classes(int(qargs))
+    kwargs = dict()
+    try:
+        if args.output:
+            fn = args.output[0]
+            kwargs['file'] = open(fn, 'w') # pylint: disable=consider-using-with
+
+        for qargs in args.args:
+            build_npn_classes(int(qargs), **kwargs)
+
+    finally:
+        outf = kwargs.get('file')
+        if outf is not None:
+            outf.close()
 
 
 if __name__ == '__main__':
