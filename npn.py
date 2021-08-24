@@ -31,6 +31,10 @@ FORMATS = {
     'F': (None, 'flag', _dump_flag),
 }
 
+def _get_field(ch):
+    desc = FORMATS[ch]
+    return desc[0] or desc[1]
+
 
 def ncm(x): # pylint: disable=invalid-name
     """
@@ -138,6 +142,9 @@ def build_npn_classes(qargs, qones_range=None, **kwargs):
     transforms = build_npn_transforms(qargs)
     qvalues = 2 ** qargs
     qfunctions = 2 ** qvalues
+    csv = kwargs.pop('csv', False)
+    if csv:
+        kwargs['sep'] = ','
 
     out_format = kwargs.pop('out_format', None)
     if out_format:
@@ -145,7 +152,7 @@ def build_npn_classes(qargs, qones_range=None, **kwargs):
     else:
         out_format = parse_out_format('#BS')
 
-    set_default_width(out_format, qvalues)
+    set_default_width(out_format, qvalues, 'BH' if csv else None)
 
     if isinstance(qones_range, int):
         qones_list = [int(qones_range)]
@@ -220,12 +227,16 @@ def parse_out_format(fmt):
     return [ (ch, int(width) if width else None) for ch, width in result ]
 
 
-def set_default_width(out_format, qvalues):
+def set_default_width(out_format, qvalues, formats=None):
     """
     Set a default width for some formats
     """
+    if formats is None:
+        formats = ''.join(FORMATS)
     for i, (fmt, width) in enumerate(out_format):
         if width is not None:
+            continue
+        if fmt not in formats:
             continue
         if fmt == '#':
             out_format[i] = (fmt, 6)
@@ -260,6 +271,11 @@ def main():
                     'D func in decimal, N arg count, Q one bits count, S class size, ' +
                     'F flag (S all arguments are significant, U at least one argument is unused).'
         },
+        ('--csv', '-c'): {
+            'action': 'store_const',
+            'const': True,
+            'help': 'Output format is CSV'
+        },
     }
 
     parser = ArgumentParser(description='Generate NPN classes of boolean functions.')
@@ -279,7 +295,7 @@ def main():
         for msg in errors:
             print(' ', msg, file=sys.stderr)
 
-    kwargs = dict()
+    kwargs = { 'csv': bool(args.csv) }
 
     if args.format:
         out_format = parse_out_format(args.format[0])
@@ -296,6 +312,10 @@ def main():
         if args.output:
             fn = args.output[0]
             kwargs['file'] = open(fn, 'w') # pylint: disable=consider-using-with
+
+        if args.csv:
+            fields = [ _get_field(ch) for ch, _ in out_format ]
+            print(*fields, sep=',', flush=True, file=kwargs.get('file', sys.stdout))
 
         for qargs, qones_range in todo:
             build_npn_classes(qargs, qones_range, **kwargs)
