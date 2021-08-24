@@ -16,6 +16,10 @@ def _dump_bit(value, width=None):
     value = f"{value:b}"
     return value.zfill(width) if width else value
 
+def _dump_flag(value, width=None):
+    value = 'S' if value else 'U'
+    return value.rjust(width) if width else value
+
 FORMATS = {
     '#': (None, 'num', _dump_dec),
     'H': ('hex_func', 'func', _dump_hex),
@@ -24,6 +28,7 @@ FORMATS = {
     'N': ('arg_count', 'qargs', _dump_dec),
     'Q': ('one_count', 'qones', _dump_dec),
     'S': (None, 'npn_class_len', _dump_dec),
+    'F': (None, 'flag', _dump_flag),
 }
 
 
@@ -72,6 +77,27 @@ def build_npn_transforms(qargs):
         for inverses in product({0, 1}, repeat=qargs):
             transforms.append((perm, inverses))
     return transforms
+
+
+def _is_significant_bit(func, ibit, qvalues):
+    mask = 1 << ibit
+    for i in range(qvalues):
+        j = i ^ mask
+        ith = bool((1 << i) & func)
+        jth = bool((1 << j) & func)
+        if ith != jth:
+            return True
+    return False
+
+
+def all_significant(func, qargs):
+    """
+    Returns False if some arguments do not impact to result.
+    """
+    for i in range(qargs):
+        if not _is_significant_bit(func, i, 2 ** qargs):
+            return False
+    return True
 
 
 def get_npn_class(qvalues, func, transforms, bits):
@@ -139,6 +165,7 @@ def build_npn_classes(qargs, qones_range=None, **kwargs):
                 values['npn_class_len'] = 1 + get_npn_class(qvalues, func, transforms, bits)
                 values['num'] += 1
                 values['func'] = func
+                values['flag'] = all_significant(func, qargs)
                 print(*_out(out_format, **values), flush=True, **kwargs)
 
                 if func == 0:
@@ -230,7 +257,8 @@ def main():
             'nargs': 1,
             'help': 'Output format FIELD [WIDTH] ... ' +
                     'Fields are: # sequence numer, H func in hex, B func in binary, ' +
-                    'D func in decimal, N arg count, Q one bits count, S class size.'
+                    'D func in decimal, N arg count, Q one bits count, S class size, ' +
+                    'F flag (S all arguments are significant, U at least one argument is unused).'
         },
     }
 
