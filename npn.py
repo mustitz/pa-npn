@@ -248,9 +248,9 @@ def set_default_width(out_format, qvalues, formats=None):
             out_format[i] = (fmt, 4)
 
 
-def main():
+def create_cmdline_parser():
     """
-    An entry point.
+    Create a command line argument parser and parse args.
     """
 
     cmdline_arguments = {
@@ -283,6 +283,16 @@ def main():
         if isinstance(args, str):
             args = (args,)
         parser.add_argument(*args, **kwargs)
+
+    return parser
+
+
+def main():
+    """
+    An entry point.
+    """
+
+    parser = create_cmdline_parser()
     args = parser.parse_args()
 
     qerrors = 0
