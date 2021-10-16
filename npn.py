@@ -48,7 +48,7 @@ def ncm(x): # pylint: disable=invalid-name
     return b | c
 
 
-class BitsInNumpy: # pylint: disable=too-few-public-methods
+class BitsInNumpy:
     """
     A numpy array for an int set implementation based on bitmasks.
     """
@@ -69,6 +69,34 @@ class BitsInNumpy: # pylint: disable=too-few-public-methods
         if result:
             self.data[index] |= mask
         return result
+
+    def reset(self):
+        """
+        Free all data, nothing to do
+        """
+
+
+class BitsInSet:
+    """
+    A set for an int set implementations based on the embedded class.
+    """
+    def __init__(self, _):
+        self.data = set()
+
+    def append(self, value):
+        """
+        Append a number to the set. Returns true if the number is already in the set.
+        """
+        result = value not in self.data
+        if result:
+            self.data.add(value)
+        return result
+
+    def reset(self):
+        """
+        Free all data, just reinit self.data
+        """
+        self.data = set()
 
 
 def build_npn_transforms(qargs):
@@ -139,6 +167,7 @@ def build_npn_classes(qargs, qones_range=None, **kwargs):
     """
     Build all NPN classes in an optimal way for a given argument count.
     """
+
     transforms = build_npn_transforms(qargs)
     qvalues = 2 ** qargs
     qfunctions = 2 ** qvalues
@@ -162,7 +191,13 @@ def build_npn_classes(qargs, qones_range=None, **kwargs):
         qones_list = list(qones_range)
 
     values = { 'qargs': qargs, 'num': 0 }
-    bits = BitsInNumpy(qfunctions)
+
+    bits_type = kwargs.pop('bits_type', None)
+    if bits_type is None:
+        bits_type = BitsInNumpy if qargs <= 5 else BitsInSet
+
+    bits = bits_type(qfunctions)
+
     for qones in qones_list:
         values['qones'] = qones
         func = 2 ** qones - 1
@@ -179,6 +214,8 @@ def build_npn_classes(qargs, qones_range=None, **kwargs):
                     break
 
             func = ncm(func)
+
+        bits.reset()
 
 
 def make_todo(arg): # pylint: disable=too-many-return-statements
@@ -276,6 +313,18 @@ def create_cmdline_parser():
             'const': True,
             'help': 'Output format is CSV'
         },
+        '--with-set-bits': {
+            'action': 'store_const',
+            'const': BitsInSet,
+            'dest': 'bits_type',
+            'help': 'Use python sets to store already processed functions.'
+        },
+        '--with-numpy-bits': {
+            'action': 'store_const',
+            'const': BitsInNumpy,
+            'dest': 'bits_type',
+            'help': 'Use numpy bits to store already processed functions.'
+        },
     }
 
     parser = ArgumentParser(description='Generate NPN classes of boolean functions.')
@@ -319,6 +368,7 @@ def main():
         sys.exit(1)
 
     try:
+        kwargs['bits_type'] = args.bits_type
         if args.output:
             fn = args.output[0]
             kwargs['file'] = open(fn, 'w') # pylint: disable=consider-using-with
