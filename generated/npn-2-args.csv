@@ -1,0 +1,5 @@
+num,arg_count,one_count,flag,hex_func,npn_class_len
+1,2,0,U,0,2
+2,2,1,S,1,8
+3,2,2,U,3,4
+4,2,2,S,6,2
